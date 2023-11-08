@@ -1,3 +1,5 @@
+// Code nach Tutorial: https://docs.arduino.cc/tutorials/portenta-h7-lite/reading-writing-flash-memory
+
 /**
 Helper functions for calculating FlashIAP block device limits
 **/
