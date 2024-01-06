@@ -1,4 +1,6 @@
 ﻿using System;
+using System.IO;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using InTheHand.Bluetooth;
@@ -12,10 +14,15 @@ namespace ConsoleApp1
         private static bool transfer = true;
         private static bool writing = false;
         private static string val = null;
+        private static string filepath = "daten.txt";
+        private static FileStream fs = null;
+        private static StreamWriter writer = null;
+        private static string uuid_service = "0008";
+        private static string uuid_characteristic = "0007";
 
         private static async void Characteristic_CharacteristicValueChanged(object sender, GattCharacteristicValueChangedEventArgs e)
         {
-            Console.WriteLine(System.Text.Encoding.UTF8.GetString(e.Value));
+            Console.WriteLine(Encoding.UTF8.GetString(e.Value));
             await characteristic.WriteValueWithResponseAsync(w);
             Console.WriteLine("wrote value");
         }
@@ -23,7 +30,7 @@ namespace ConsoleApp1
 
         public static async Task Main(string[] args)
         {
-            
+
             //https://inthehand.com/2022/12/21/12-days-of-bluetooth-8-bluetooth-low-energy-in-code/
 
             // Filter für Suche nach BLE-Geräten erzeugen
@@ -37,81 +44,95 @@ namespace ConsoleApp1
             // Geräteabfrage erzeugen
             BluetoothDevice bleDevice = await Bluetooth.RequestDeviceAsync(opts);
 
-            // Ausgabe des verbunden Geräts
+            // Ausgabe des verbunden Geräts, falls vorhanden, sonst Anwendung beenden
             if (bleDevice != null)
             {
-                Console.WriteLine(bleDevice.Name);
-                Console.WriteLine(bleDevice.Id);
+                Console.WriteLine($"Connected to device {bleDevice.Name} with Id {bleDevice.Id}");
             }
             else
             {
                 Console.WriteLine("no device connected");
+                Environment.Exit(1);
             }
 
-            // Services anzeigen lassen
+            // Verbindung zu Server
             var gatt = bleDevice.Gatt;
             Console.WriteLine("Connecting to GATT Server...");
             await gatt.ConnectAsync();
-            Console.WriteLine("connected");
-            Console.WriteLine(BluetoothUuid.GetCharacteristic("battery_level"));
+            Console.WriteLine($"Connected to server from device {gatt.Device}");
+
+
+            // Services anzeigen
             var services = await gatt.GetPrimaryServicesAsync();
-            //var serviceTest = await gatt.GetPrimaryServiceAsync(new Guid("0008"));
-            //if (serviceTest != null)
-            Console.Write("got services: ");
-            Console.WriteLine(services.Count);
+            Console.WriteLine($"{services.Count} services available");
+
             foreach (GattService service in services)
             {
-                Console.Write("Service Uuid: ");
-                Console.WriteLine(service.Uuid);
+                Console.WriteLine($"Service with Uuid {service.Uuid}");
+
+                // Charakteristiken pro Service anzeigen
                 var characteristics = await service.GetCharacteristicsAsync();
-                
                 foreach (GattCharacteristic charac in characteristics)
                 {
-                    Console.Write("Characteristic Uuid: ");
-                    Console.Write(charac.Uuid);
+                    Console.Write($"Characteristic with Uuid {charac.Uuid}");
 
                     byte[] valArray = await charac.ReadValueAsync();
-                    Console.Write(" || value: ");
                     if (valArray != null)
                     {
-                        val = System.Text.Encoding.UTF8.GetString(valArray);
-                        Console.WriteLine(val.ToString());
+                        val = Encoding.UTF8.GetString(valArray);
+                        Console.WriteLine($" has value {val}");
                     }
                     else
                     {
                         Console.WriteLine("null");
                     }
-                    if (service.Uuid.ToString() == "0008" & charac.Uuid.ToString() == "0007")
+
+                    // Subscription des gewünschten Services
+                    if (service.Uuid.ToString() == uuid_service & charac.Uuid.ToString() == uuid_characteristic)
                     {
-                        Console.Write("Characteristic Properties: ");
-                        Console.WriteLine(charac.Properties);
+                        // Properties anzeigen
+                        Console.WriteLine($"Characteristic Properties: {charac.Properties}");
 
-
-                        //characteristic.CharacteristicValueChanged += Characteristic_CharacteristicValueChanged;
+                        // Callback für Wertänderung: neuen Wert in Konsole/Puffer schreiben
                         charac.CharacteristicValueChanged += (s, e) =>
                         {
                             writing = true;
-                            val = System.Text.Encoding.UTF8.GetString(e.Value);
+                            val = Encoding.UTF8.GetString(e.Value);
+                            // set transfer-flag when last filepart received
                             if (val == "ende") { transfer = false; }
-                            else { Console.WriteLine(val); }
+                            //
+                            else
+                            {
+                                Console.WriteLine(val);
+                                writer.WriteLine(val);
+                            }
                             writing = false;
                         };
 
-                        Console.WriteLine("will start notifications");
+                        fs = new FileStream(filepath, FileMode.Create);
+                        writer = new StreamWriter(fs, Encoding.UTF8);
+                        // Subscription
+                        Console.WriteLine($"start notifications of characteristic {charac.Uuid}");
                         await charac.StartNotificationsAsync();
 
                         while (transfer)
                         {
-                            while (writing) ;
-                            
+                            while (writing) ; // Timer einbauen für Abbruch
+
                             await charac.WriteValueWithResponseAsync(w);
                             Console.WriteLine("wrote value");
+                            writing = true;
                         }
                     }
                 }
             }
+
+            if (writer != null)
+                writer.Close();
+            if (fs != null)
+                fs.Dispose();
+
             Console.WriteLine("warte auf Programmende");
-            // Verzögerung vor Programmende
             Thread.Sleep(5000);
             gatt.Disconnect();
         }
