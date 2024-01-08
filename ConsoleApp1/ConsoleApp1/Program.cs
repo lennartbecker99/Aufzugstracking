@@ -14,7 +14,7 @@ namespace ConsoleApp1
         private static bool transfer = true;
         private static bool writing = false;
         private static string val = null;
-        private static string filepath = "daten.txt";
+        private static string filepath = "daten.csv";
         private static FileStream fs = null;
         private static StreamWriter writer = null;
         private static string uuid_service = "0008";
