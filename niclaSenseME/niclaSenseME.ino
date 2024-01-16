@@ -62,8 +62,6 @@ void setup() {
   nicla::begin();
   nicla::leds.begin();  //https://docs.arduino.cc/tutorials/nicla-sense-me/cheat-sheet#rgb-led
 
-  while (!initiateBLE())
-    ;
   while (!initiateFS())
     ;
 
@@ -181,6 +179,11 @@ bool fileTransfer() {
   dirent ent;
   mbed::File file;
 
+  while (!initiateBLE())
+    ;
+
+  Serial.println(serviceFileTransmission.uuid());
+  Serial.println(characteristicFileTransmission.uuid());
 
   // Cycle through all the directory entries
   while ((dir.read(&ent)) > 0) {
@@ -198,11 +201,14 @@ bool fileTransfer() {
         break;
       }
 
+      size_t totalLen{ file.size() };
+
       nicla::leds.setColor(blue);
       transferSuccess = false;
       lastConnectionMillis = millis();
 
       while (millis() - lastConnectionMillis < transferMaxDurationMillis) {
+
         // wait for BLE central device
         BLEDevice central = BLE.central();
 
@@ -215,28 +221,15 @@ bool fileTransfer() {
           nicla::leds.setColor(green);
           lastConnectionMillis = millis();
 
-          if (central.connected()) {
-            size_t totalLen{ file.size() };
+          long now = millis();
+          while (millis() - now < 2000)
+            ;
+            long lastWrite = millis();
+          while (central.connected()) {
 
-            while (totalLen > 0) {
-              char buf[bufferLength]{};
+            if (transferSuccess && characteristicFileTransmission.written()) {
+              central.disconnect();
 
-              auto read = file.read(buf, bufferLength);
-              totalLen -= read;
-              for (const auto& c : buf) {
-                fileline.concat(c);
-              }
-              Serial.println(fileline);
-              if (centralReacted()) {
-                lastConnectionMillis = millis();
-                characteristicFileTransmission.writeValue(fileline);
-              } else {
-                return false;
-              }
-            }
-            characteristicFileTransmission.writeValue(eof_indicator);
-
-            if (centralReacted()) {
               // Empty file after reading all the content.
               file.close();
               ret = file.open(&fs, ent.d_name, O_TRUNC);
@@ -247,29 +240,39 @@ bool fileTransfer() {
                 file.close();
                 fs.remove(ent.d_name);
               }
-              transferSuccess = true;
-              lastConnectionMillis = millis();
+              
+              break;
+            }
+
+            if (totalLen > 0) {
+              if (characteristicFileTransmission.written()) {
+                char buf[bufferLength]{};
+
+                auto read = file.read(buf, bufferLength);
+                totalLen -= read;
+                for (const auto& c : buf) {
+                  fileline.concat(c);
+                }
+                characteristicFileTransmission.writeValue(fileline);
+                lastWrite = millis();
+                Serial.println(fileline);
+              } else {
+                if (millis() - lastWrite > transferMaxDurationMillis) return false;
+              }
+
             } else {
-              return false;
+              characteristicFileTransmission.writeValue(eof_indicator);
+              transferSuccess = true;
             }
           }
         }
         if (transferSuccess) break;
       }
-    }
-  }
-  Serial.println("No more files to transfer.");
-  return true;
-}
-
-
-bool centralReacted() {
-  while (!characteristicFileTransmission.written()) {
-    if (millis() - lastConnectionMillis > transferMaxDurationMillis) {
-      nicla::leds.setColor(blue);
+      if (transferSuccess) continue;
       return false;
     }
   }
+  Serial.println("No more files to transfer.");
   return true;
 }
 
