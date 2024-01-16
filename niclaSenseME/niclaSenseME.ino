@@ -1,10 +1,17 @@
+// nicla features
+#include <Nicla_System.h>  // https://docs.arduino.cc/tutorials/nicla-sense-me/cheat-sheet#rgb-led
+#include <Arduino_BHY2.h>  //https://docs.arduino.cc/tutorials/nicla-sense-me/cheat-sheet#standalone-mode
+
 // storing to & reading from Flash Storage
+// https://github.com/arduino/nicla-sense-me-fw/tree/main/Arduino_BHY2/examples/StandaloneFlashStorage
 #include <BlockDevice.h>
 #include <Dir.h>
 #include <File.h>
 #include <FileSystem.h>
 #include <LittleFileSystem.h>
-#include <Arduino_BHY2.h>
+
+// communication via BLE
+#include <ArduinoBLE.h>
 
 
 
@@ -13,6 +20,8 @@
 constexpr auto userRoot{ "storedSensorData" };  // Name of filesystem root
 mbed::BlockDevice* spif;
 mbed::LittleFileSystem fs{ userRoot };
+constexpr size_t bufferLength{ 256 };  // Read and send file len-bytes
+
 
 // sensor objects to be used for retreiving sensor data
 Sensor temp(SENSOR_ID_TEMP);
@@ -24,6 +33,21 @@ const int printIntervall = 5000;
 
 // bytes per line in storage file
 const int bytesPerLine = 128;
+const String eof_indicator = "ende";
+
+// BLE Services
+BLEService serviceFileTransmission("0008");
+
+// BLE Characteristics
+BLEStringCharacteristic characteristicFileTransmission("0007",  // standard 16-bit characteristic UUID
+                                                       BLERead | BLEWrite | BLENotify,
+                                                       bytesPerLine);
+
+// helper variables
+long transferMaxDurationMillis = 30000;
+
+
+
 
 void setup() {
   Serial.begin(115200);
@@ -32,29 +56,27 @@ void setup() {
   for (const auto timeout = millis() + 2500; !Serial && millis() < timeout; delay(250))
     ;
 
-  Serial.print("Loading the SPI Flash Storage and LittleFS filesystem...");
+  // initiate nicla features
+  nicla::begin();
+  nicla::leds.begin();  //https://docs.arduino.cc/tutorials/nicla-sense-me/cheat-sheet#rgb-led
 
-  // init core-wide instance of SPIF Block Device
-  spif = mbed::BlockDevice::get_default_instance();
-  spif->init();
+  while (!initiateBLE())
+    ;
+  while (!initiateFS())
+    ;
 
-  // initiate filesystem
-  int err = fs.mount(spif);
-  if (err) {
-    err = fs.reformat(spif);
-    Serial.print("Error mounting file system: ");
-    Serial.println(err);
-    while (true)  // do nothing if filesystem was not mounted correctly
-      ;
+  if (fileTransfer()) {
+    Serial.println("Files transferred to client.");
+    Serial.println("Return to normal mode.");
+  } else {
+    Serial.print("No client connection requested for ");
+    Serial.print(transferMaxDurationMillis);
+    Serial.println("ms.");
+    Serial.println("Begin with normal mode.");
   }
-  Serial.println(" filesystem mounted ro flash storage.");
 
-  Serial.print("Initialising the sensors... ");
-  BHY2.begin();
-
-  temp.begin();
-  accel.begin();
-  Serial.println(" initialised sensors.");
+  while (!initiateSensors())
+    ;
 }
 
 
@@ -64,6 +86,8 @@ void loop() {
   static auto printTime = millis();
   static auto storeTime = millis();
   static auto statsTime = millis();
+
+  nicla::leds.setColor(red);
 
   // read actual sensor data
   BHY2.update();
@@ -80,6 +104,172 @@ void loop() {
     printStats();
     listDirsContents();
   }
+}
+
+
+
+
+bool initiateBLE() {
+  // begin BLE initialization
+  Serial.print("Starting BLE...");
+
+  if (!BLE.begin()) {
+    Serial.println(" failed!");
+    return false;
+  }
+  Serial.print(" BLE running...");
+
+  // set BLE device information & advertised data
+  BLE.setLocalName("Nicla von Flo");
+  BLE.setAdvertisedService(serviceFileTransmission);                          // add service UUID to advertising
+  serviceFileTransmission.addCharacteristic(characteristicFileTransmission);  // add characteristic to service
+  BLE.addService(serviceFileTransmission);                                    // add  service to device
+  characteristicFileTransmission.writeValue("waiting");                       // set initial value for characteristic
+
+  // start advertising
+  BLE.advertise();
+
+  //turn LED to blue for indicating BLE readiness
+  nicla::leds.setColor(blue);
+  Serial.println("Bluetooth® device active, waiting for connections...");
+
+  return true;
+}
+
+bool initiateFS() {
+  Serial.print("Loading the SPI Flash Storage and LittleFS filesystem...");
+
+  // init core-wide instance of SPIF Block Device
+  spif = mbed::BlockDevice::get_default_instance();
+  spif->init();
+
+  // initiate filesystem
+  int err = fs.mount(spif);
+  if (err) {
+    err = fs.reformat(spif);
+    Serial.print("Error mounting file system: ");
+    Serial.println(err);
+    return false;
+  }
+  Serial.println(" filesystem mounted to flash storage.");
+
+  return true;
+}
+
+bool initiateSensors() {
+  Serial.print("Initialising the sensors... ");
+
+  BHY2.begin();
+  temp.begin();
+  accel.begin();
+
+  Serial.println(" initialised sensors.");
+
+  return true;
+}
+
+
+
+
+bool fileTransfer() {
+
+  long lastConnectionMillis;
+  bool transferSuccess = false;
+  // Open the root of the filesystem
+  mbed::Dir dir(&fs, "/");
+  dirent ent;
+  mbed::File file;
+
+
+  // Cycle through all the directory entries
+  while ((dir.read(&ent)) > 0) {
+    if (ent.d_type == DT_REG) {
+
+      // open the file in read-only mode
+      auto ret = file.open(&fs, ent.d_name);  // returns <0 if failure
+      if (ret) {
+        Serial.print("Unable to open file");
+        Serial.println(ent.d_name);
+        break;
+      }
+
+      if (file.size() < 1) {
+        break;
+      }
+
+      nicla::leds.setColor(blue);
+      transferSuccess = false;
+      lastConnectionMillis = millis();
+
+      while (millis() - lastConnectionMillis < transferMaxDurationMillis) {
+        // wait for BLE central device
+        BLEDevice central = BLE.central();
+
+        // if a central is connected
+        if (central) {
+          Serial.print("Connected to central: ");
+          // print the central's BT address
+          Serial.println(central.address());
+          // turn LED to green for indicating connection
+          nicla::leds.setColor(green);
+          lastConnectionMillis = millis();
+
+          if (central.connected()) {
+            size_t totalLen{ file.size() };
+
+            while (totalLen > 0) {
+              char buf[bufferLength]{};
+
+              auto read = file.read(buf, bufferLength);
+              totalLen -= read;
+              for (const auto& c : buf) {
+                fileline.append(c)
+              }
+              Serial.println(fileline);
+              if (centralReacted()) {
+                lastConnectionMillis = millis();
+                characteristicFileTransmission.writeValue(fileline);
+              } else {
+                return false;
+              }
+            }
+            characteristicFileTransmission.writeValue(eof_indicator);
+
+            if (centralReacted()) {
+              // Empty file after reading all the content.
+              file.close();
+              ret = file.open(&fs, ent.d_name, O_TRUNC);
+              if (ret < 0) {
+                Serial.println("Unable to truncate file");
+              } else {
+                // delete empty file from Flash Storage
+                file.close();
+                fs.remove(ent.d_name);
+              }
+              transferSuccess = true;
+              lastConnectionMillis = millis();
+            } else {
+              return false;
+            }
+          }
+        }
+        if (transferSuccess) break;
+      }
+    }
+  }
+  Serial.println("No more files to transfer.");
+  return true;
+}
+
+
+bool centralReacted() {
+  while (!characteristicFileTransmission.written()) {
+    if (millis() - lastConnectionMillis() > transferMaxDurationMillis) {
+      nicla::leds.setColor(blue);
+      return false;
+    }
+  }
+  return true;
 }
 
 
@@ -198,7 +388,7 @@ void listDirsContents() {
 
           // check file contents
           if (file.size() > 0) {
-            printFile(file); // replace by function for sending contents via BLE
+            printFile(file);  // replace by function for sending contents via BLE
 
             // Empty file after reading all the content.
             file.close();
