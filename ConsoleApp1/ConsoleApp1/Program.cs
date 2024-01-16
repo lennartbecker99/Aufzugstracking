@@ -117,11 +117,12 @@ namespace ConsoleApp1
 
                         while (transfer)
                         {
-                            while (writing) ; // Timer einbauen für Abbruch
+                            while (writing) { Console.Write("-"); } // Timer einbauen für Abbruch
 
                             await charac.WriteValueWithResponseAsync(w);
                             Console.WriteLine("wrote value");
-                            writing = true;
+                            Thread.Sleep(1000);
+                            //writing = true;
                         }
                     }
                 }

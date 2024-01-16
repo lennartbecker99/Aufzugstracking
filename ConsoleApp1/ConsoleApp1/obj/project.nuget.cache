@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "zgMek8t7M49fmyNAIk57qxgxCFFahLC/GlwCRX6MGxQHJlVy90p8ATVVoxsq5PxSns5Jnqt49KqutPydVGBXSw==",
+  "dgSpecHash": "M+f4R1caHLsyFu9Hpc0wrhGbHl2FZsOyHyU54LvVwnqH1DN1Tx7gFZFaAVwoeLjwYdnUKqOQUsUjY41ZAhag9A==",
   "success": true,
-  "projectFilePath": "C:\\Users\\hofmannfl\\source\\repos\\ConsoleApp1\\ConsoleApp1\\ConsoleApp1.csproj",
+  "projectFilePath": "C:\\Users\\hofmannfl\\source\\repos\\DH-Studium\\Studienarbeit_Aufzugstracking\\ConsoleApp1\\ConsoleApp1\\ConsoleApp1.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\hofmannfl\\.nuget\\packages\\32feet.net\\3.5.0\\32feet.net.3.5.0.nupkg.sha512",
     "C:\\Users\\hofmannfl\\.nuget\\packages\\inthehand.bluetoothle\\4.0.35\\inthehand.bluetoothle.4.0.35.nupkg.sha512",
