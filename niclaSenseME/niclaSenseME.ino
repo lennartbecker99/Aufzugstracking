@@ -33,7 +33,9 @@ const int printIntervall = 5000;
 
 // bytes per line in storage file
 const int bytesPerLine = 128;
+String fileline = "";
 const String eof_indicator = "ende";
+long lastConnectionMillis;
 
 // BLE Services
 BLEService serviceFileTransmission("0008");
@@ -173,7 +175,6 @@ bool initiateSensors() {
 
 bool fileTransfer() {
 
-  long lastConnectionMillis;
   bool transferSuccess = false;
   // Open the root of the filesystem
   mbed::Dir dir(&fs, "/");
@@ -223,7 +224,7 @@ bool fileTransfer() {
               auto read = file.read(buf, bufferLength);
               totalLen -= read;
               for (const auto& c : buf) {
-                fileline.append(c)
+                fileline.concat(c);
               }
               Serial.println(fileline);
               if (centralReacted()) {
@@ -264,7 +265,7 @@ bool fileTransfer() {
 
 bool centralReacted() {
   while (!characteristicFileTransmission.written()) {
-    if (millis() - lastConnectionMillis() > transferMaxDurationMillis) {
+    if (millis() - lastConnectionMillis > transferMaxDurationMillis) {
       nicla::leds.setColor(blue);
       return false;
     }
