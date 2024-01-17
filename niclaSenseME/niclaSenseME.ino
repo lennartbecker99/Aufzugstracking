@@ -256,6 +256,7 @@ bool fileTransfer() {
                 characteristicFileTransmission.writeValue(fileline);
                 lastWrite = millis();
                 Serial.println(fileline);
+                fileline = "";
               } else {
                 if (millis() - lastWrite > transferMaxDurationMillis) return false;
               }
