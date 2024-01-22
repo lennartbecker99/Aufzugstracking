@@ -109,6 +109,7 @@ namespace ConsoleApp1
                             writing = false;
                         };
 
+                        filepath = val + ".csv";
                         fs = new FileStream(filepath, FileMode.Create);
                         writer = new StreamWriter(fs, Encoding.UTF8);
                         // Subscription
