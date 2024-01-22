@@ -31,22 +31,21 @@ SensorXYZ accel(SENSOR_ID_ACC);
 const int storeIntervall = 1000;
 const int printIntervall = 5000;
 
-// bytes per line in storage file
+// variables for time measurement
+long transferMaxDurationMillis = 30000;
+long lastConnectionMillis;
+long startupTime = 0;
+
+// helper variables for storing/retreiving file contents
 const int bytesPerLine = 128;
 String fileline = "";
 const String eof_indicator = "ende";
-long lastConnectionMillis;
 
-// BLE Services
+// BLE objects
 BLEService serviceFileTransmission("0008");
-
-// BLE Characteristics
 BLEStringCharacteristic characteristicFileTransmission("0007",  // standard 16-bit characteristic UUID
                                                        BLERead | BLEWrite | BLENotify,
                                                        bytesPerLine);
-
-// helper variables
-long transferMaxDurationMillis = 30000;
 
 
 
