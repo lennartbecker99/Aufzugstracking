@@ -197,6 +197,8 @@ bool fileTransfer() {
       }
 
       if (file.size() < 1) {
+        file.close();
+        file.remove(ent.d_name);
         break;
       }
 
