@@ -20,7 +20,6 @@
 constexpr auto userRoot{ "storedSensorData" };  // Name of filesystem root
 mbed::BlockDevice* spif;
 mbed::LittleFileSystem fs{ userRoot };
-constexpr size_t bufferLength{ 256 };  // Read and send file len-bytes
 
 
 // sensor objects to be used for retreiving sensor data
@@ -28,13 +27,13 @@ Sensor temp(SENSOR_ID_TEMP);
 SensorXYZ accel(SENSOR_ID_ACC);
 
 // intervalls for storing/printing file contents
-const int storeIntervall = 1000;
-const int printIntervall = 5000;
+const int storeIntervall = 10000;
+const int printIntervall = 20000;
 
 // variables for time measurement
 long transferMaxDurationMillis = 30000;
 long lastConnectionMillis;
-long startupTime = 0;
+String dateAndTime = "";
 
 // helper variables for storing/retreiving file contents
 const int bytesPerLine = 128;
@@ -123,7 +122,6 @@ bool initiateBLE() {
   BLE.setAdvertisedService(serviceFileTransmission);                          // add service UUID to advertising
   serviceFileTransmission.addCharacteristic(characteristicFileTransmission);  // add characteristic to service
   BLE.addService(serviceFileTransmission);                                    // add  service to device
-  characteristicFileTransmission.writeValue("waiting");                       // set initial value for characteristic
 
   // start advertising
   BLE.advertise();
@@ -191,18 +189,19 @@ bool fileTransfer() {
       // open the file in read-only mode
       auto ret = file.open(&fs, ent.d_name);  // returns <0 if failure
       if (ret) {
-        Serial.print("Unable to open file");
+        Serial.print("Unable to open file ");
         Serial.println(ent.d_name);
         break;
       }
 
       if (file.size() < 1) {
         file.close();
-        file.remove(ent.d_name);
+        fs.remove(ent.d_name);
         break;
       }
 
       size_t totalLen{ file.size() };
+      characteristicFileTransmission.writeValue(ent.d_name);
 
       nicla::leds.setColor(blue);
       transferSuccess = false;
@@ -225,14 +224,17 @@ bool fileTransfer() {
           long now = millis();
           while (millis() - now < 2000)
             ;
-            long lastWrite = millis();
+          long lastWrite = millis();
+
           while (central.connected()) {
 
             if (transferSuccess && characteristicFileTransmission.written()) {
-              central.disconnect();
 
               // Empty file after reading all the content.
+              Serial.print("file to be removed: ");
+              Serial.println(ent.d_name);
               file.close();
+
               ret = file.open(&fs, ent.d_name, O_TRUNC);
               if (ret < 0) {
                 Serial.println("Unable to truncate file");
@@ -240,16 +242,48 @@ bool fileTransfer() {
                 // delete empty file from Flash Storage
                 file.close();
                 fs.remove(ent.d_name);
+                Serial.println("file removed.");
               }
-              
+
               break;
             }
 
-            if (totalLen > 0) {
-              if (characteristicFileTransmission.written()) {
-                char buf[bufferLength]{};
+            if (dateAndTime == "" && characteristicFileTransmission.written()) {
+              dateAndTime = characteristicFileTransmission.value();
+              String day = "";
+              for (int i = 5; i <= 6; i++) {
+                day += dateAndTime[i];
+              }
+              String month = "";
+              for (int i = 0; i <= 1; i++) {
+                month += dateAndTime[i];
+              }
+              String year = "";
+              for (int i = 10; i <= 13; i++) {
+                year += dateAndTime[i];
+              }
+              String hour = "";
+              for (int i = 15; i <= 16; i++) {
+                hour += dateAndTime[i];
+              }
+              String minute = "";
+              for (int i = 19; i <= 20; i++) {
+                minute += dateAndTime[i];
+              }
 
-                auto read = file.read(buf, bufferLength);
+              Serial.println(dateAndTime);
+              Serial.print(day);
+              Serial.print(month);
+              Serial.print(year);
+              Serial.print(hour);
+              Serial.println(minute);
+            }
+
+            if (totalLen > 0) {
+              if (dateAndTime != "" && characteristicFileTransmission.written()) {
+                char buf[bytesPerLine]{};
+
+                auto read = file.read(buf, bytesPerLine);
                 totalLen -= read;
                 for (const auto& c : buf) {
                   fileline.concat(c);
@@ -263,8 +297,10 @@ bool fileTransfer() {
               }
 
             } else {
-              characteristicFileTransmission.writeValue(eof_indicator);
-              transferSuccess = true;
+              if (!transferSuccess) {
+                characteristicFileTransmission.writeValue(eof_indicator);
+                transferSuccess = true;
+              }
             }
           }
         }
@@ -326,6 +362,10 @@ String sensorsToCSVLine() {
   line += ",accelZ=";
   line += accel.z();
   line += "\r\n";
+
+  Serial.print(line.length());
+  Serial.print(": ");
+  Serial.println(line);
 
   return line;
 }
