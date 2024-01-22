@@ -13,6 +13,7 @@ namespace ConsoleApp1
         private static GattCharacteristic characteristic = null;
         private static bool transfer = true;
         private static bool writing = false;
+        private static bool dateTransferred = false;
         private static string val = null;
         private static string filepath = "daten.csv";
         private static FileStream fs = null;
@@ -118,12 +119,24 @@ namespace ConsoleApp1
 
                         while (transfer)
                         {
-                            while (writing) { Console.Write("-"); } // Timer einbauen für Abbruch
+                            while (writing) { Console.Write("-"); }
 
-                            await charac.WriteValueWithResponseAsync(w);
-                            Console.WriteLine("wrote value");
-                            Thread.Sleep(1000);
-                            //writing = true;
+                            if (!dateTransferred)
+                            {
+                                // aktuelles Datum + Zeit übertragen
+                                String datetime = DateTime.Now.ToString("MM / dd / yyyy HH: mm");
+                                byte[] w_datetime = Encoding.ASCII.GetBytes(datetime);
+                                await charac.WriteValueWithResponseAsync(w_datetime);
+                                dateTransferred = true;
+                            }
+                            else
+                            {
+
+                                await charac.WriteValueWithResponseAsync(w);
+                                Console.WriteLine("wrote value");
+                                Thread.Sleep(1000);
+                                //writing = true;
+                            }
                         }
                     }
                 }
