@@ -124,7 +124,7 @@ namespace ConsoleApp1
                             if (!dateTransferred)
                             {
                                 // aktuelles Datum + Zeit übertragen
-                                String datetime = DateTime.Now.ToString("MM / dd / yyyy HH: mm");
+                                string datetime = DateTime.Now.ToString("MM / dd / yyyy HH: mm");
                                 byte[] w_datetime = Encoding.ASCII.GetBytes(datetime);
                                 await charac.WriteValueWithResponseAsync(w_datetime);
                                 dateTransferred = true;
@@ -135,17 +135,14 @@ namespace ConsoleApp1
                                 await charac.WriteValueWithResponseAsync(w);
                                 Console.WriteLine("wrote value");
                                 Thread.Sleep(1000);
-                                //writing = true;
                             }
                         }
                     }
                 }
             }
 
-            if (writer != null)
-                writer.Close();
-            if (fs != null)
-                fs.Dispose();
+            writer?.Close();
+            fs?.Dispose();
 
             Console.WriteLine("warte auf Programmende");
             Thread.Sleep(5000);
