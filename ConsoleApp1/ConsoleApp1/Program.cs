@@ -14,8 +14,9 @@ namespace ConsoleApp1
         private static bool transfer = true;
         private static bool writing = false;
         private static bool dateTransferred = false;
+        private static bool transferSuccess = false;
         private static string val = null;
-        private static string filepath = "daten.csv";
+        private static string filepath = "no file received";
         private static FileStream fs = null;
         private static StreamWriter writer = null;
         private static string uuid_service = "0008";
@@ -99,20 +100,27 @@ namespace ConsoleApp1
                         {
                             writing = true;
                             val = Encoding.UTF8.GetString(e.Value);
-                            // set transfer-flag when last filepart received
-                            if (val == "ende") { transfer = false; }
+                            // set transfer success-flag when last filepart received
+                            if (val == "ende") { transferSuccess = true; }
                             //
                             else
                             {
                                 Console.WriteLine(val);
-                                writer.WriteLine(val);
+                                writer.Write(val);
                             }
                             writing = false;
                         };
 
-                        filepath = val + ".csv";
+                        filepath = val;
                         fs = new FileStream(filepath, FileMode.Create);
                         writer = new StreamWriter(fs, Encoding.UTF8);
+
+                        // aktuelles Datum + Zeit übertragen
+                        string datetime = DateTime.Now.ToString("MM / dd / yyyy HH: mm");
+                        byte[] w_datetime = Encoding.ASCII.GetBytes(datetime);
+                        await charac.WriteValueWithResponseAsync(w_datetime);
+                        dateTransferred = true;
+
                         // Subscription
                         Console.WriteLine($"start notifications of characteristic {charac.Uuid}");
                         await charac.StartNotificationsAsync();
@@ -121,21 +129,12 @@ namespace ConsoleApp1
                         {
                             while (writing) { Console.Write("-"); }
 
-                            if (!dateTransferred)
+                            if (dateTransferred)
                             {
-                                // aktuelles Datum + Zeit übertragen
-                                string datetime = DateTime.Now.ToString("MM / dd / yyyy HH: mm");
-                                byte[] w_datetime = Encoding.ASCII.GetBytes(datetime);
-                                await charac.WriteValueWithResponseAsync(w_datetime);
-                                dateTransferred = true;
-                            }
-                            else
-                            {
-
                                 await charac.WriteValueWithResponseAsync(w);
-                                Console.WriteLine("wrote value");
-                                Thread.Sleep(1000);
                             }
+
+                            if (transferSuccess) break;
                         }
                     }
                 }
@@ -143,10 +142,10 @@ namespace ConsoleApp1
 
             writer?.Close();
             fs?.Dispose();
-
-            Console.WriteLine("warte auf Programmende");
-            Thread.Sleep(5000);
             gatt.Disconnect();
+
+            Console.WriteLine($"data stored: {filepath}.");
+            Thread.Sleep(5000);
         }
     }
 }
