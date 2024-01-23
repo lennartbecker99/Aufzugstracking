@@ -1,6 +1,4 @@
 C:\Users\hofmannfl\source\repos\DH-Studium\Studienarbeit_Aufzugstracking\Aufzugtracking_Datenempfang\Aufzugtracking_Datenempfang\bin\x64\Debug\Aufzugtracking_Datenempfang.exe.config
-C:\Users\hofmannfl\source\repos\DH-Studium\Studienarbeit_Aufzugstracking\Aufzugtracking_Datenempfang\Aufzugtracking_Datenempfang\bin\x64\Debug\Aufzugtracking_Datenempfang.exe.manifest
-C:\Users\hofmannfl\source\repos\DH-Studium\Studienarbeit_Aufzugstracking\Aufzugtracking_Datenempfang\Aufzugtracking_Datenempfang\bin\x64\Debug\Aufzugtracking_Datenempfang.application
 C:\Users\hofmannfl\source\repos\DH-Studium\Studienarbeit_Aufzugstracking\Aufzugtracking_Datenempfang\Aufzugtracking_Datenempfang\bin\x64\Debug\Aufzugtracking_Datenempfang.exe
 C:\Users\hofmannfl\source\repos\DH-Studium\Studienarbeit_Aufzugstracking\Aufzugtracking_Datenempfang\Aufzugtracking_Datenempfang\bin\x64\Debug\Aufzugtracking_Datenempfang.pdb
 C:\Users\hofmannfl\source\repos\DH-Studium\Studienarbeit_Aufzugstracking\Aufzugtracking_Datenempfang\Aufzugtracking_Datenempfang\bin\x64\Debug\InTheHand.BluetoothLE.dll
@@ -8,8 +6,11 @@ C:\Users\hofmannfl\source\repos\DH-Studium\Studienarbeit_Aufzugstracking\Aufzugt
 C:\Users\hofmannfl\source\repos\DH-Studium\Studienarbeit_Aufzugstracking\Aufzugtracking_Datenempfang\Aufzugtracking_Datenempfang\obj\x64\Debug\Aufzugtracking_Datenempfang.csproj.SuggestedBindingRedirects.cache
 C:\Users\hofmannfl\source\repos\DH-Studium\Studienarbeit_Aufzugstracking\Aufzugtracking_Datenempfang\Aufzugtracking_Datenempfang\obj\x64\Debug\Aufzugtracking_Datenempfang.exe.config
 C:\Users\hofmannfl\source\repos\DH-Studium\Studienarbeit_Aufzugstracking\Aufzugtracking_Datenempfang\Aufzugtracking_Datenempfang\obj\x64\Debug\Aufzugtracking_Datenempfang.csproj.CoreCompileInputs.cache
-C:\Users\hofmannfl\source\repos\DH-Studium\Studienarbeit_Aufzugstracking\Aufzugtracking_Datenempfang\Aufzugtracking_Datenempfang\obj\x64\Debug\Aufzugtracking_Datenempfang.exe.manifest
-C:\Users\hofmannfl\source\repos\DH-Studium\Studienarbeit_Aufzugstracking\Aufzugtracking_Datenempfang\Aufzugtracking_Datenempfang\obj\x64\Debug\Aufzugtracking_Datenempfang.application
 C:\Users\hofmannfl\source\repos\DH-Studium\Studienarbeit_Aufzugstracking\Aufzugtracking_Datenempfang\Aufzugtracking_Datenempfang\obj\x64\Debug\Aufzugtracking_Datenempfang.csproj.CopyComplete
 C:\Users\hofmannfl\source\repos\DH-Studium\Studienarbeit_Aufzugstracking\Aufzugtracking_Datenempfang\Aufzugtracking_Datenempfang\obj\x64\Debug\Aufzugtracking_Datenempfang.exe
 C:\Users\hofmannfl\source\repos\DH-Studium\Studienarbeit_Aufzugstracking\Aufzugtracking_Datenempfang\Aufzugtracking_Datenempfang\obj\x64\Debug\Aufzugtracking_Datenempfang.pdb
+C:\Users\hofmannfl\source\repos\DH-Studium\Studienarbeit_Aufzugstracking\Aufzugtracking_Datenempfang\Aufzugtracking_Datenempfang\obj\x64\Debug\Aufzugtracking_Datenempfang.TrustInfo.xml
+C:\Users\hofmannfl\source\repos\DH-Studium\Studienarbeit_Aufzugstracking\Aufzugtracking_Datenempfang\Aufzugtracking_Datenempfang\bin\x64\Debug\Aufzugtracking_Datenempfang.exe.manifest
+C:\Users\hofmannfl\source\repos\DH-Studium\Studienarbeit_Aufzugstracking\Aufzugtracking_Datenempfang\Aufzugtracking_Datenempfang\bin\x64\Debug\Aufzugtracking_Datenempfang.application
+C:\Users\hofmannfl\source\repos\DH-Studium\Studienarbeit_Aufzugstracking\Aufzugtracking_Datenempfang\Aufzugtracking_Datenempfang\obj\x64\Debug\Aufzugtracking_Datenempfang.exe.manifest
+C:\Users\hofmannfl\source\repos\DH-Studium\Studienarbeit_Aufzugstracking\Aufzugtracking_Datenempfang\Aufzugtracking_Datenempfang\obj\x64\Debug\Aufzugtracking_Datenempfang.application

@@ -1,0 +1,2 @@
+C:\Users\hofmannfl\source\repos\DH-Studium\Studienarbeit_Aufzugstracking\Aufzugtracking_Datenempfang\Aufzugtracking_Datenempfang\obj\Release\Aufzugtracking_Datenempfang.csproj.AssemblyReference.cache
+C:\Users\hofmannfl\source\repos\DH-Studium\Studienarbeit_Aufzugstracking\Aufzugtracking_Datenempfang\Aufzugtracking_Datenempfang\obj\Release\Aufzugtracking_Datenempfang.csproj.CoreCompileInputs.cache
