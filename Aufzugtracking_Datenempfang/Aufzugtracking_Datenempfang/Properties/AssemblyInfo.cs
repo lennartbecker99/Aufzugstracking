@@ -6,11 +6,11 @@ using System.Runtime.InteropServices;
 // Attribute gesteuert. Ändern Sie diese Attributwerte, um die Informationen zu ändern,
 // die einer Assembly zugeordnet sind.
 [assembly: AssemblyTitle("Aufzugtracking_Datenempfang")]
-[assembly: AssemblyDescription("")]
+[assembly: AssemblyDescription("Programm für den Datenempfang via BLE von einem entsprechend programmierten Nicla Sense ME.")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("TRUMPF Group")]
+[assembly: AssemblyCompany("Studienarbeit während Informatikstudium an der DHBW")]
 [assembly: AssemblyProduct("Aufzugtracking_Datenempfang")]
-[assembly: AssemblyCopyright("Copyright © TRUMPF Group 2024")]
+[assembly: AssemblyCopyright("")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
