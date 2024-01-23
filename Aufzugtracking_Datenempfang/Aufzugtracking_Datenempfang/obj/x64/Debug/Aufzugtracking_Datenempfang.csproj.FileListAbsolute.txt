@@ -13,3 +13,4 @@ C:\Users\hofmannfl\source\repos\DH-Studium\Studienarbeit_Aufzugstracking\Aufzugt
 C:\Users\hofmannfl\source\repos\DH-Studium\Studienarbeit_Aufzugstracking\Aufzugtracking_Datenempfang\Aufzugtracking_Datenempfang\obj\x64\Debug\Aufzugtracking_Datenempfang.csproj.CopyComplete
 C:\Users\hofmannfl\source\repos\DH-Studium\Studienarbeit_Aufzugstracking\Aufzugtracking_Datenempfang\Aufzugtracking_Datenempfang\obj\x64\Debug\Aufzugtracking_Datenempfang.exe
 C:\Users\hofmannfl\source\repos\DH-Studium\Studienarbeit_Aufzugstracking\Aufzugtracking_Datenempfang\Aufzugtracking_Datenempfang\obj\x64\Debug\Aufzugtracking_Datenempfang.pdb
+C:\Users\hofmannfl\source\repos\DH-Studium\Studienarbeit_Aufzugstracking\Aufzugtracking_Datenempfang\Aufzugtracking_Datenempfang\obj\x64\Debug\Aufzugtracking_Datenempfang.TrustInfo.xml
