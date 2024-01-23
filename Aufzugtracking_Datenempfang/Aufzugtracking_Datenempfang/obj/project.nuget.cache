@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "dgSpecHash": "xNldCggxJ1x1cZocMjthCj3xan/S92d0mHkeNA8i4X6SQtpz/hxxtf9DXBrCL8bz3DMPopkac4GbAaLABdxyeg==",
+  "success": true,
+  "projectFilePath": "C:\\Users\\hofmannfl\\source\\repos\\DH-Studium\\Studienarbeit_Aufzugstracking\\Aufzugtracking_Datenempfang\\Aufzugtracking_Datenempfang\\Aufzugtracking_Datenempfang.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\hofmannfl\\.nuget\\packages\\inthehand.bluetoothle\\4.0.35\\inthehand.bluetoothle.4.0.35.nupkg.sha512",
+    "C:\\Users\\hofmannfl\\.nuget\\packages\\microsoft.windows.sdk.contracts\\10.0.22621.2428\\microsoft.windows.sdk.contracts.10.0.22621.2428.nupkg.sha512",
+    "C:\\Users\\hofmannfl\\.nuget\\packages\\system.runtime.interopservices.windowsruntime\\4.3.0\\system.runtime.interopservices.windowsruntime.4.3.0.nupkg.sha512",
+    "C:\\Users\\hofmannfl\\.nuget\\packages\\system.runtime.windowsruntime\\4.6.0\\system.runtime.windowsruntime.4.6.0.nupkg.sha512",
+    "C:\\Users\\hofmannfl\\.nuget\\packages\\system.runtime.windowsruntime.ui.xaml\\4.6.0\\system.runtime.windowsruntime.ui.xaml.4.6.0.nupkg.sha512"
+  ],
+  "logs": []
+}
