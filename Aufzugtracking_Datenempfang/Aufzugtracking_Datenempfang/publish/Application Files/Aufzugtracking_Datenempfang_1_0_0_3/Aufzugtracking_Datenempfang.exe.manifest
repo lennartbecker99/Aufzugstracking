@@ -42,7 +42,7 @@
     </dependentAssembly>
   </dependency>
   <dependency>
-    <dependentAssembly dependencyType="install" allowDelayedBinding="true" codebase="Aufzugtracking_Datenempfang.exe" size="11776">
+    <dependentAssembly dependencyType="install" allowDelayedBinding="true" codebase="Aufzugtracking_Datenempfang.exe" size="10752">
       <assemblyIdentity name="Aufzugtracking_Datenempfang" version="1.0.0.0" language="neutral" processorArchitecture="amd64" />
     </dependentAssembly>
   </dependency>

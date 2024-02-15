@@ -104,8 +104,9 @@ namespace Aufzugtracking_Datenempfang
                             writing = false;
                         };
 
-                        filepath = val;
-                        fs = new FileStream(filepath, FileMode.Create);
+                        filepath = "C:\\Aufzugtracking_Dateien\\" + val;
+                        Directory.CreateDirectory(Path.GetDirectoryName(filepath));
+                        fs = new FileStream(filepath, FileMode.Append);
                         writer = new StreamWriter(fs, Encoding.UTF8);
 
                         // aktuelles Datum + Zeit übertragen
