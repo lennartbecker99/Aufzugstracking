@@ -15,7 +15,7 @@ namespace Aufzugtracking_Datenempfang
         private static bool dateTransferred = false;
         private static bool transferSuccess = false;
         private static string val = null;
-        private static string filepath = "no file received";
+        private static string filename = "noFileReceived";
         private static FileStream fs = null;
         private static StreamWriter writer = null;
         private static string uuid_service = "0008";
@@ -104,9 +104,15 @@ namespace Aufzugtracking_Datenempfang
                             writing = false;
                         };
 
-                        filepath = "C:\\Aufzugtracking_Dateien\\" + val;
-                        Directory.CreateDirectory(Path.GetDirectoryName(filepath));
-                        fs = new FileStream(filepath, FileMode.Append);
+                        string dt_year = DateTime.Now.ToString("yyyy");
+                        string dt_month = DateTime.Now.ToString("MM");
+                        string dt_day = DateTime.Now.ToString("dd");
+                        string dt_hour = DateTime.Now.ToString("HH");
+                        string dt_minute = DateTime.Now.ToString("mm");
+                        string directoryName = dt_year + dt_month + dt_minute + "_" + dt_hour + "h" + dt_minute + "m\\";
+                        filename = "C:\\Aufzugtracking_Dateien\\" + directoryName + val;
+                        Directory.CreateDirectory(Path.GetDirectoryName(filename));
+                        fs = new FileStream(filename, FileMode.Append);
                         writer = new StreamWriter(fs, Encoding.UTF8);
 
                         // aktuelles Datum + Zeit übertragen
@@ -138,7 +144,7 @@ namespace Aufzugtracking_Datenempfang
             fs?.Dispose();
             gatt.Disconnect();
 
-            Console.WriteLine($"data stored: {filepath}.");
+            Console.WriteLine($"data stored: {filename}.");
             Thread.Sleep(5000);
         }
     }
