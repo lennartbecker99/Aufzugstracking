@@ -23,8 +23,10 @@ mbed::LittleFileSystem fs{ userRoot };
 
 
 // sensor objects to be used for retreiving sensor data
-Sensor temp(SENSOR_ID_TEMP);
 SensorXYZ accel(SENSOR_ID_ACC);
+
+// csv head line
+const String headLine = "timestamp;accelX;accelY;accelZ\r\n";
 
 // intervalls for storing/printing file contents
 const int storeIntervall = 10000;
@@ -157,7 +159,6 @@ bool initiateSensors() {
   Serial.print("Initialising the sensors... ");
 
   BHY2.begin();
-  temp.begin();
   accel.begin();
 
   Serial.println(" initialised sensors.");
@@ -324,12 +325,34 @@ void storeData() {
   // Open in file in write mode.
   // Create if doesn't exists, otherwise open in append mode.
   mbed::File file;
-  auto err = file.open(&fs, filename, O_WRONLY | O_CREAT | O_APPEND);
-  if (err) {
-    Serial.print("Error opening file for writing: ");
-    Serial.println(err);
-    return;
+
+  auto append_error = file.open(&fs, filename, O_WRONLY | O_APPEND);
+
+  if (append_error) {
+    Serial.println("File does not exist yet");
+
+    auto create_error = file.open(&fs, filename, O_WRONLY | O_CREAT | O_APPEND);
+    if (create_error) {
+      Serial.println("File cannot be created.");
+      return;
+
+    } else {
+      auto title_error = file.write(headLine.c_str(), headLine.length());
+
+      if (title_error != headLine.length()) {
+        Serial.print("Error writing csv head line: ");
+        Serial.println(title_error);
+      }
+    }
   }
+
+//   auto err = file.open(&fs, filename, O_WRONLY | O_CREAT | O_APPEND);
+//   if (err) {
+//     Serial.print("Error opening file for writing: ");
+//     Serial.println(err);
+//     return;
+//   }
+
 
   // Save sensors data as a CSV line
   auto csvLine = sensorsToCSVLine();
@@ -344,22 +367,19 @@ void storeData() {
 }
 
 String sensorsToCSVLine() {
-  String line;
+  String line = "";
 
   // Pre-allocate maxLine bytes for line -> amount tbd
   constexpr size_t maxLine{ bytesPerLine };
   line.reserve(maxLine);
 
   // create line with relevant sensor data
-  line = "timestamp=";
   line += millis();
-  line += ",temp=";
-  line += temp.value();
-  line += ",accelX=";
+  line += ";";
   line += accel.x();
-  line += ",accelY=";
+  line += ";";
   line += accel.y();
-  line += ",accelZ=";
+  line += ";";
   line += accel.z();
   line += "\r\n";
 
