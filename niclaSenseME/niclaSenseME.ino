@@ -14,6 +14,10 @@
 #include <ArduinoBLE.h>
 
 
+// time
+#include <TimeLib.h>
+
+
 
 
 // defining filesystem object
@@ -23,10 +27,15 @@ mbed::LittleFileSystem fs{ userRoot };
 
 
 // sensor objects to be used for retreiving sensor data
-SensorXYZ accel(SENSOR_ID_ACC);
+SensorXYZ accelUncalibrated(SENSOR_ID_ACC_RAW);
+SensorXYZ accelCorrected(SENSOR_ID_ACC);
+SensorXYZ accelLinear(SENSOR_ID_LACC);
+Sensor barometer(SENSOR_ID_BARO);
+SensorBSEC bsec(SENSOR_ID_BSEC);
+
 
 // csv head line
-const String headLine = "timestamp;accelX;accelY;accelZ\r\n";
+const String headLine = "timestamp;accelUncalibX;accelUncalibY;accelUncalibZ;accelCorrectedX;accelCorrectedY;accelCorrectedZ;accelLinearX;accelLinearY;accelLinearZ;barometer;bsec_co2eq;bsec_bVocEq;bsec_compH;bsec_compT\r\n";
 
 // intervalls for storing/printing file contents
 const int storeIntervall = 10000;
@@ -54,8 +63,8 @@ BLEStringCharacteristic characteristicFileTransmission("0007",  // standard 16-b
 void setup() {
   Serial.begin(115200);
 
-  // wait for serial startup for max. 2,5s
-  for (const auto timeout = millis() + 2500; !Serial && millis() < timeout; delay(250))
+  // wait for serial startup for max. 5s
+  for (const auto timeout = millis() + 5000; !Serial && millis() < timeout; delay(500))
     ;
 
   // initiate nicla features
@@ -159,7 +168,11 @@ bool initiateSensors() {
   Serial.print("Initialising the sensors... ");
 
   BHY2.begin();
-  accel.begin();
+  accelUncalibrated.begin();
+  accelCorrected.begin();
+  accelLinear.begin();
+  barometer.begin();
+  bsec.begin();
 
   Serial.println(" initialised sensors.");
 
@@ -272,7 +285,20 @@ bool fileTransfer() {
                 minute += dateAndTime[i];
               }
 
+              //   int hr = hour.toInt();
+              //   int min = minute.toInt();
+              //   int sec = 0;
+              //   int d = day.toInt();
+              //   int m = month.toInt();
+              //   int y = year.toInt();
+              //   setTime(hr, min, sec, d, m, y);
+              //   Serial.print("arduino time.now: ");
+              //   Serial.println(hour() + minute() + second() + ", " + month() + year());
+
+              Serial.print("dateAndTime: ");
               Serial.println(dateAndTime);
+
+              Serial.print("dateAndTime split up: ");
               Serial.print(day);
               Serial.print(month);
               Serial.print(year);
@@ -346,13 +372,6 @@ void storeData() {
     }
   }
 
-//   auto err = file.open(&fs, filename, O_WRONLY | O_CREAT | O_APPEND);
-//   if (err) {
-//     Serial.print("Error opening file for writing: ");
-//     Serial.println(err);
-//     return;
-//   }
-
 
   // Save sensors data as a CSV line
   auto csvLine = sensorsToCSVLine();
@@ -373,18 +392,40 @@ String sensorsToCSVLine() {
   constexpr size_t maxLine{ bytesPerLine };
   line.reserve(maxLine);
 
+
   // create line with relevant sensor data
   line += millis();
   line += ";";
-  line += accel.x();
+  line += accelUncalibrated.x();
   line += ";";
-  line += accel.y();
+  line += accelUncalibrated.y();
   line += ";";
-  line += accel.z();
+  line += accelUncalibrated.z();
+  line += ";";
+  line += accelCorrected.x();
+  line += ";";
+  line += accelCorrected.y();
+  line += ";";
+  line += accelCorrected.z();
+  line += ";";
+  line += accelLinear.x();
+  line += ";";
+  line += accelLinear.y();
+  line += ";";
+  line += accelLinear.z();
+  line += ";";
+  line += barometer.value();
+  line += ";";
+  line += bsec.co2_eq();
+  line += ";";
+  line += bsec.b_voc_eq();
+  line += ";";
+  line += bsec.comp_h();
+  line += ";";
+  line += bsec.comp_t();
   line += "\r\n";
 
-  Serial.print(line.length());
-  Serial.print(": ");
+  Serial.print("next line of sensor values: ");
   Serial.println(line);
 
   return line;
