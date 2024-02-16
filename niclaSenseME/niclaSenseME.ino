@@ -38,8 +38,7 @@ SensorBSEC bsec(SENSOR_ID_BSEC);
 const String headLine = "timestamp;accelUncalibX;accelUncalibY;accelUncalibZ;accelCorrectedX;accelCorrectedY;accelCorrectedZ;accelLinearX;accelLinearY;accelLinearZ;barometer;bsec_co2eq;bsec_bVocEq;bsec_compH;bsec_compT\r\n";
 
 // intervalls for storing/printing file contents
-const int storeIntervall = 10000;
-const int printIntervall = 20000;
+const int storeIntervall = 100;
 
 // variables for time measurement
 long transferMaxDurationMillis = 30000;
@@ -105,13 +104,6 @@ void loop() {
   if (millis() - storeTime >= storeIntervall) {
     storeTime = millis();
     storeData();
-  }
-
-  // List stats + files on the Flash Memory & print contents after specified Intervall
-  if (millis() - printTime >= printIntervall) {
-    printTime = millis();
-    printStats();
-    listDirsContents();
   }
 }
 
@@ -192,9 +184,6 @@ bool fileTransfer() {
 
   while (!initiateBLE())
     ;
-
-  Serial.println(serviceFileTransmission.uuid());
-  Serial.println(characteristicFileTransmission.uuid());
 
   // Cycle through all the directory entries
   while ((dir.read(&ent)) > 0) {
@@ -429,111 +418,4 @@ String sensorsToCSVLine() {
   Serial.println(line);
 
   return line;
-}
-
-
-
-
-void printStats() {
-  // retreive stats from file system object
-  struct statvfs stats {};
-  fs.statvfs(userRoot, &stats);
-
-  auto blockSize = stats.f_bsize;
-
-  Serial.print("Total Space [Bytes]:  ");
-  Serial.println(stats.f_blocks * blockSize);  // calculate space from block size & number of blocks
-  Serial.print("Free Space [Bytes]:   ");
-  Serial.println(stats.f_bfree * blockSize);
-  Serial.print("Used Space [Bytes]:   ");
-  Serial.println((stats.f_blocks - stats.f_bfree) * blockSize);
-  Serial.println();
-}
-
-
-
-
-void listDirsContents() {
-  // create path to root of filesystem
-  String baseDirName = "/";
-  baseDirName += userRoot;
-
-  Serial.print("Listing files on ");
-  Serial.print(baseDirName);
-  Serial.println(" Filesystem");
-
-  // Open root of filesystem
-  mbed::Dir dir(&fs, "/");
-  dirent ent;
-
-  // Cycle through all directory entries
-  while ((dir.read(&ent)) > 0) {
-    // action according to type of directory entry
-    switch (ent.d_type) {
-      case DT_DIR:  // subdirectory
-        {
-          Serial.print("Directory ");
-          Serial.println(ent.d_name);
-          break;
-        }
-      case DT_REG:  // file
-        {
-          Serial.print("Regular File ");
-          Serial.print(ent.d_name);
-
-          // Declare and open the file in read-only mode
-          mbed::File file;
-          auto ret = file.open(&fs, ent.d_name);
-          // notify if file cannot be opened & jump to end of loop
-          if (ret) {
-            Serial.println("Unable to open file");
-            continue;
-          }
-          Serial.print(" [");
-          Serial.print(file.size());
-          Serial.println(" bytes]");
-
-          // check file contents
-          if (file.size() > 0) {
-            printFile(file);  // replace by function for sending contents via BLE
-
-            // Empty file after reading all the content.
-            file.close();
-            /*ret = file.open(&fs, ent.d_name, O_TRUNC);
-                // check success of erasing file contents
-                if (ret < 0)
-                    Serial.println("Unable to truncate file");
-            } else {
-                // Remove file if empty.
-                file.close();
-                fs.remove(ent.d_name);*/
-          }
-
-          break;
-        }
-      default:
-        {
-          Serial.print("Other ");
-          break;
-        }
-    }
-  }
-}
-
-void printFile(mbed::File& file) {
-  // Read and print file len-bytes at time
-  // to preserve RAM
-  constexpr size_t len{ bytesPerLine };
-
-  size_t totalLen{ file.size() };
-
-  while (totalLen > 0) {
-    char buf[len]{};
-
-    auto read = file.read(buf, len);
-    totalLen -= read;
-    for (const auto& c : buf)
-      Serial.print(c);
-  }
-  Serial.println();
 }
