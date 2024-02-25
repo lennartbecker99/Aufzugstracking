@@ -109,7 +109,7 @@ namespace Aufzugtracking_Datenempfang
                         string dt_day = DateTime.Now.ToString("dd");
                         string dt_hour = DateTime.Now.ToString("HH");
                         string dt_minute = DateTime.Now.ToString("mm");
-                        string directoryName = dt_year + dt_month + dt_minute + "_" + dt_hour + "h" + dt_minute + "m\\";
+                        string directoryName = dt_year + dt_month + dt_day + "_" + dt_hour + "h" + dt_minute + "m\\";
                         filename = "C:\\Aufzugtracking_Dateien\\" + directoryName + val;
                         Directory.CreateDirectory(Path.GetDirectoryName(filename));
                         fs = new FileStream(filename, FileMode.Append);
