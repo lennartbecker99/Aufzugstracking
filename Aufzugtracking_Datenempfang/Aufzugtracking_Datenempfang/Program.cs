@@ -145,7 +145,10 @@ namespace Aufzugtracking_Datenempfang
             gatt.Disconnect();
 
             Console.WriteLine($"data stored: {filename}.");
-            Thread.Sleep(5000);
+            Console.WriteLine("Press any key to exit program...");
+            Console.ReadKey();
+            Console.Write("bye bye!");
+            Thread.Sleep(3000);
         }
     }
 }
