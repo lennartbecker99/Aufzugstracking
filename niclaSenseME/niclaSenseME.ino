@@ -403,7 +403,7 @@ String sensorsToCSVLine() {
   line += ";";
   line += accelLinear.z();
   line += ";";
-  line += barometer.value();
+  line += String(barometer.value(), 3);
   line += ";";
   line += bsec.co2_eq();
   line += ";";
