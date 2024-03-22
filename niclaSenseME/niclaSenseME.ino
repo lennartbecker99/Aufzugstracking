@@ -27,28 +27,44 @@ mbed::LittleFileSystem fs{ userRoot };
 
 
 // sensor objects to be used for retreiving sensor data
-SensorXYZ accelUncalibrated(SENSOR_ID_ACC_RAW);
-SensorXYZ accelCorrected(SENSOR_ID_ACC);
-SensorXYZ accelLinear(SENSOR_ID_LACC);
+SensorXYZ accelLinear(SENSOR_ID_LACC);  // negative x is our upwards
 Sensor barometer(SENSOR_ID_BARO);
-SensorBSEC bsec(SENSOR_ID_BSEC);
+//SensorBSEC bsec(SENSOR_ID_BSEC);
+
+// acceleration limit for decision between movement and stop of elevator
+const int accelerationLimit = 30;
+const int accelerationLimitLow = 15;
+const int numberAccelerationValuesOverLimit = 2;
+int i = 0;
 
 
 // csv head line
-const String headLine = "timestamp;accelUncalibX;accelUncalibY;accelUncalibZ;accelCorrectedX;accelCorrectedY;accelCorrectedZ;accelLinearX;accelLinearY;accelLinearZ;barometer;bsec_co2eq;bsec_bVocEq;bsec_compH;bsec_compT\r\n";
+const String headLine = "timestamp;starttime;endtime;pressureStart;pressureEnd;level;accelerationValues\r\n";
+int level = 10;
 
 // intervalls for storing/printing file contents
-const int storeIntervall = 100;
+const int updateIntervall = 200;         //ms
+const int longestDriveDuration = 30000;  //ms
 
 // variables for time measurement
+static auto updateTime = 0;
 long transferMaxDurationMillis = 30000;
 long lastConnectionMillis;
 String dateAndTime = "";
 
 // helper variables for storing/retreiving file contents
+const int bytesPerLineForStorage = 512;
 const int bytesPerLine = 128;
 String fileline = "";
 const String eof_indicator = "ende";
+
+
+// helper variable for storing measurement data before processing
+int accelerationValues[(1000 / updateIntervall) * (longestDriveDuration / 1000)];
+int start = 0;
+int end = 0;
+float pressureStart = 0;
+float pressureEnd = 0;
 
 // BLE objects
 BLEService serviceFileTransmission("0008");
@@ -91,22 +107,95 @@ void setup() {
 
 
 void loop() {
-  static auto printTime = millis();
-  static auto storeTime = millis();
-  static auto statsTime = millis();
+
+  start = 0;
+  end = 0;
+  pressureStart = 0;
+  pressureEnd = 0;
 
   nicla::leds.setColor(red);
 
-  // read actual sensor data
-  BHY2.update();
-
   // Store data from sensors to the SPI Flash Memory after specified Intervall
-  if (millis() - storeTime >= storeIntervall) {
-    storeTime = millis();
-    storeData();
+  if (millis() - updateTime >= updateIntervall) {
+    updateTime = millis();
+    // read actual sensor data
+    BHY2.update();
+
+    if (i < numberAccelerationValuesOverLimit) {
+      if (abs(int(accelLinear.x())) > accelerationLimit) {
+        i++;
+      } else {
+        i = 0;
+      }
+    } else {
+      if (measureElevatorRun()) {
+        if (calculateRun()) {
+          storeData();
+        }
+      }
+      i = 0;
+    }
   }
 }
 
+
+
+
+bool measureElevatorRun() {
+  start = millis();
+  pressureStart = barometer.value();
+
+  int i = 0;
+  int j = 0;
+  int k = 0;
+  int accelStart = int(accelLinear.x());
+
+  while (true) {
+    if (millis() - updateTime >= updateIntervall) {
+
+      BHY2.update();
+      accelerationValues[i] = int(accelLinear.x());
+      i++;
+
+      // check end of elevator run
+      if (j < numberAccelerationValuesOverLimit) {
+        if (accelStart > 0) {
+          if (accelerationValues[i - 1] < (accelerationLimit * -1)) {
+            j++;
+          } else {
+            j = 0;
+          }
+        } else {
+          if (accelerationValues[i - 1] > accelerationLimit) {
+            j++;
+          } else {
+            j = 0;
+          }
+        }
+      } else {
+        if (k < numberAccelerationValuesOverLimit) {
+          if (abs(accelerationValues[i - 1]) < accelerationLimitLow) {
+              k++;
+            }
+          else {
+            k = 0;
+          }
+        } else {
+          // leave while loop
+          break;
+        }
+      }
+    }
+  }
+
+  pressureEnd = barometer.value();
+  end = millis();
+
+  return true;
+}
+
+bool calculateRun() {
+}
 
 
 
@@ -160,11 +249,9 @@ bool initiateSensors() {
   Serial.print("Initialising the sensors... ");
 
   BHY2.begin();
-  accelUncalibrated.begin();
-  accelCorrected.begin();
   accelLinear.begin();
   barometer.begin();
-  bsec.begin();
+  //bsec.begin();
 
   Serial.println(" initialised sensors.");
 
@@ -175,7 +262,6 @@ bool initiateSensors() {
 
 
 bool fileTransfer() {
-
   bool transferSuccess = false;
   // Open the root of the filesystem
   mbed::Dir dir(&fs, "/");
@@ -378,40 +464,35 @@ String sensorsToCSVLine() {
   String line = "";
 
   // Pre-allocate maxLine bytes for line -> amount tbd
-  constexpr size_t maxLine{ bytesPerLine };
+  constexpr size_t maxLine{ bytesPerLineForStorage };
   line.reserve(maxLine);
 
 
   // create line with relevant sensor data
   line += millis();
   line += ";";
-  line += accelUncalibrated.x();
+  line += start;
   line += ";";
-  line += accelUncalibrated.y();
+  line += end;
   line += ";";
-  line += accelUncalibrated.z();
+  line += pressureStart;
   line += ";";
-  line += accelCorrected.x();
+  line += pressureStart;
   line += ";";
-  line += accelCorrected.y();
+  line += level;
   line += ";";
-  line += accelCorrected.z();
-  line += ";";
-  line += accelLinear.x();
-  line += ";";
-  line += accelLinear.y();
-  line += ";";
-  line += accelLinear.z();
-  line += ";";
-  line += String(barometer.value(), 3);
-  line += ";";
-  line += bsec.co2_eq();
-  line += ";";
-  line += bsec.b_voc_eq();
-  line += ";";
-  line += bsec.comp_h();
-  line += ";";
-  line += bsec.comp_t();
+  for (int i = 0; i < sizeof(accelerationValues); i++) {
+    line += accelerationValues[i];
+    line += "-";
+    accelerationValues[i] = 0;
+  }
+  //   line += bsec.co2_eq();
+  //   line += ";";
+  //   line += bsec.b_voc_eq();
+  //   line += ";";
+  //   line += bsec.comp_h();
+  //   line += ";";
+  //   line += bsec.comp_t();
   line += "\r\n";
 
   Serial.print("next line of sensor values: ");
