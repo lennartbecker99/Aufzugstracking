@@ -15,7 +15,7 @@
 
 
 // time
-#include <TimeLib.h>
+//#include <TimeLib.h>
 
 
 
@@ -39,8 +39,7 @@ int i = 0;
 
 
 // csv head line
-const String headLine = "timestamp;starttime;endtime;pressureStart;pressureEnd;level;accelerationValues\r\n";
-int level = 10;
+const String headLine = "timestamp;starttime;endtime;pressureStart;pressureEnd;accelMax;accelMin;accelEnd;brakeStart;level\r\n";
 
 // intervalls for storing/printing file contents
 const int updateIntervall = 200;         //ms
@@ -60,11 +59,8 @@ const String eof_indicator = "ende";
 
 
 // helper variable for storing measurement data before processing
-int accelerationValues[(1000 / updateIntervall) * (longestDriveDuration / 1000)];
-int start = 0;
-int end = 0;
-float pressureStart = 0;
-float pressureEnd = 0;
+//int accelerationValues[(1000 / updateIntervall) * (longestDriveDuration / 1000)];
+
 
 // BLE objects
 BLEService serviceFileTransmission("0008");
@@ -108,11 +104,6 @@ void setup() {
 
 void loop() {
 
-  start = 0;
-  end = 0;
-  pressureStart = 0;
-  pressureEnd = 0;
-
   nicla::leds.setColor(red);
 
   // Store data from sensors to the SPI Flash Memory after specified Intervall
@@ -128,11 +119,7 @@ void loop() {
         i = 0;
       }
     } else {
-      if (measureElevatorRun()) {
-        if (calculateRun()) {
-          storeData();
-        }
-      }
+      measureElevatorRun();
       i = 0;
     }
   }
@@ -142,42 +129,82 @@ void loop() {
 
 
 bool measureElevatorRun() {
-  start = millis();
-  pressureStart = barometer.value();
 
-  int i = 0;
-  int j = 0;
-  int k = 0;
-  int accelStart = int(accelLinear.x());
+  unsigned int accel_start = millis();
+  float pressure_start = barometer.value();
+
+
+  //unsigned int i = 0;
+  unsigned int j = 0;
+  unsigned int k = 0;
+  unsigned int l = 0;
+  //int accelStart = int(accelLinear.x());
+  bool upwards;
+  int accel = -1 * int(accelLinear.x());  // x axis on sensorboard is inverted/flipped
+  if (accel > 0) {
+    upwards = true;
+  } else {
+    upwards = false;
+  }
+  unsigned int accel_max = 0;
+  int accel_min = 0;
+  unsigned int accel_endTime = 0;
+  unsigned int brake_startTime = 0;
 
   while (true) {
     if (millis() - updateTime >= updateIntervall) {
 
       BHY2.update();
-      accelerationValues[i] = int(accelLinear.x());
-      i++;
+      accel = -1 * int(accelLinear.x());  // x axis on sensorboard is inverted/flipped
+      if (accel > accel_max) {
+        accel_max = accel;
+      }
+      if (accel < accel_min) {
+        accel_min = accel;
+      }
+      //accelerationValues[i] = int(accelLinear.x());
+      //i++;
 
-      // check end of elevator run
+
+      // if elevator has not begun braking..
       if (j < numberAccelerationValuesOverLimit) {
-        if (accelStart > 0) {
-          if (accelerationValues[i - 1] < (accelerationLimit * -1)) {
+
+        // check end of acceleration period
+        if (l == numberAccelerationValuesOverLimit) {
+          // einmaliges Setzen der Variable, danach ist l immer größer
+          accel_endTime = millis();
+          l = l + 1;
+        } else if ((accel_endTime == 0) && (abs(accel) < accelerationLimitLow)) {
+          l++;
+        } else {
+          l = 0;
+        }
+
+        // check end of elevator run by detecting braking
+        if (upwards) {
+          if (accel < (accelerationLimit * -1)) {
             j++;
           } else {
             j = 0;
           }
         } else {
-          if (accelerationValues[i - 1] > accelerationLimit) {
+          if (accel > accelerationLimit) {
             j++;
           } else {
             j = 0;
           }
         }
+
       } else {
+
+        if (brake_startTime == 0) {
+          brake_startTime = millis();
+        }
+        // check end of elevator braking by checking if acceleration->0
         if (k < numberAccelerationValuesOverLimit) {
-          if (abs(accelerationValues[i - 1]) < accelerationLimitLow) {
-              k++;
-            }
-          else {
+          if (abs(accel) < accelerationLimitLow) {
+            k++;
+          } else {
             k = 0;
           }
         } else {
@@ -188,13 +215,34 @@ bool measureElevatorRun() {
     }
   }
 
-  pressureEnd = barometer.value();
-  end = millis();
+  float pressure_end = barometer.value();
+  unsigned int brake_endTime = millis();
 
-  return true;
+  if (calculateRun(
+        /*startTime*/ accel_start, /*endTime*/ brake_endTime,
+        /*pressureStart*/ pressure_start, /*pressureEnd*/ pressure_end,
+        /*accelMax*/ accel_max, /*accelMin*/ accel_min,
+        /*TimeOfAccelEnd*/ accel_endTime, /*TimeOfBrakeStart*/ brake_startTime)) {
+    return true;
+  } else {
+    return false;
+  }
 }
 
-bool calculateRun() {
+bool calculateRun(unsigned int accel_start, unsigned int brake_endTime, float pressure_start, float pressure_end, unsigned int accel_max, int accel_min, unsigned int accel_endTime, unsigned int brake_startTime) {
+
+  int level = 10;
+
+  if (pressure_start > 0) {
+    storeData(/*startTime*/ accel_start, /*endTime*/ brake_endTime,
+              /*pressureStart*/ pressure_start, /*pressureEnd*/ pressure_end,
+              /*accelMax*/ accel_max, /*accelMin*/ accel_min,
+              /*TimeOfAccelEnd*/ accel_endTime, /*TimeOfBrakeStart*/ brake_startTime,
+              /*level*/ level);
+    return true;
+  } else {
+    return false;
+  }
 }
 
 
@@ -419,7 +467,7 @@ bool fileTransfer() {
 
 
 
-void storeData() {
+void storeData(unsigned int accel_start, unsigned int brake_endTime, unsigned int pressure_start, unsigned int pressure_end, unsigned int accel_max, int accel_min, unsigned int accel_endTime, unsigned int brake_startTime, int level) {
   // name of file on LittleFS filesystem to append data - filename tbd
   constexpr auto filename{ "sensors.csv" };
 
@@ -449,7 +497,12 @@ void storeData() {
 
 
   // Save sensors data as a CSV line
-  auto csvLine = sensorsToCSVLine();
+  auto csvLine = dataToCsvLine(
+    /*accel_start*/ accel_start, /*brake_endTime*/ brake_endTime,
+    /*pressure_start*/ pressure_start, /*pressure_end*/ pressure_end,
+    /*accel_max*/ accel_max, /*accel_min*/ accel_min,
+    /*accel_endTime*/ accel_endTime, /*brake_startTime*/ brake_startTime,
+    /*level*/ level);
 
   auto ret = file.write(csvLine.c_str(), csvLine.length());
   if (ret != csvLine.length()) {
@@ -460,7 +513,7 @@ void storeData() {
   file.close();
 }
 
-String sensorsToCSVLine() {
+String dataToCsvLine(unsigned int accel_start, unsigned int brake_endTime, unsigned int pressure_start, unsigned int pressure_end, unsigned int accel_max, int accel_min, unsigned int accel_endTime, unsigned int brake_startTime, int level) {
   String line = "";
 
   // Pre-allocate maxLine bytes for line -> amount tbd
@@ -471,21 +524,29 @@ String sensorsToCSVLine() {
   // create line with relevant sensor data
   line += millis();
   line += ";";
-  line += start;
+  line += accel_start;
   line += ";";
-  line += end;
+  line += brake_endTime;
   line += ";";
-  line += pressureStart;
+  line += pressure_start;
   line += ";";
-  line += pressureStart;
+  line += pressure_end;
+  line += ";";
+  line += accel_max;
+  line += ";";
+  line += accel_min;
+  line += ";";
+  line += accel_endTime;
+  line += ";";
+  line += brake_startTime;
   line += ";";
   line += level;
   line += ";";
-  for (int i = 0; i < sizeof(accelerationValues); i++) {
-    line += accelerationValues[i];
-    line += "-";
-    accelerationValues[i] = 0;
-  }
+  //   for (int i = 0; i < sizeof(accelerationValues); i++) {
+  //     line += accelerationValues[i];
+  //     line += "-";
+  //     accelerationValues[i] = 0;
+  //   }
   //   line += bsec.co2_eq();
   //   line += ";";
   //   line += bsec.b_voc_eq();
