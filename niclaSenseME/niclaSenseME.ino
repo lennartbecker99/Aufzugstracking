@@ -32,27 +32,29 @@ Sensor barometer(SENSOR_ID_BARO);
 //SensorBSEC bsec(SENSOR_ID_BSEC);
 
 // acceleration limit for decision between movement and stop of elevator
-const int accelerationLimit = 30;
-const int accelerationLimitLow = 15;
-const int numberAccelerationValuesOverLimit = 2;
-int i = 0;
+const int updateIntervall = 100;  //ms
+const int numberAccelerationValuesOverLimit = 4;
+const int numberAccelerationValuesOverLimit_endOfRun = 8;
+const int longestDriveDuration = 30000;       //ms
+const unsigned int detectionDuration = 1000;  //ms
+const int accelerationLimit = 75;
+const int accelerationLimitLow = 60;
+unsigned int i = 0;
 
 
 // csv head line
 const String headLine = "timestamp;starttime;endtime;pressureStart;pressureEnd;accelMax;accelMin;accelEnd;brakeStart;level\r\n";
+const String test_headLine = "timestamp;accelerationX*(-1);pressure\r\n";
 
-// intervalls for storing/printing file contents
-const int updateIntervall = 200;         //ms
-const int longestDriveDuration = 30000;  //ms
 
 // variables for time measurement
-static auto updateTime = 0;
+long updateTime = 0;
 long transferMaxDurationMillis = 30000;
 long lastConnectionMillis;
 String dateAndTime = "";
 
 // helper variables for storing/retreiving file contents
-const int bytesPerLineForStorage = 512;
+const int bytesPerLineForStorage = 128;
 const int bytesPerLine = 128;
 String fileline = "";
 const String eof_indicator = "ende";
@@ -100,8 +102,6 @@ void setup() {
 }
 
 
-
-
 void loop() {
 
   nicla::leds.setColor(red);
@@ -112,16 +112,28 @@ void loop() {
     // read actual sensor data
     BHY2.update();
 
+    // Alternative Erkennung
+    // if (i < numberAccelerationValuesOverLimit) {
+    //   if (abs(int(accelLinear.x())) > accelerationLimit) {
+    //     i++;
+    //   } else if ((updateTime - detection_startTime) > detectionDuration) {
+    //     i = 0;
+    //   }
+    ////////////////////////
     if (i < numberAccelerationValuesOverLimit) {
       if (abs(int(accelLinear.x())) > accelerationLimit) {
         i++;
-      } else {
+      } else if (i < 2) {
         i = 0;
+      } else {
+        i--;
       }
     } else {
       measureElevatorRun();
       i = 0;
     }
+
+    test_storeData();
   }
 }
 
@@ -129,6 +141,8 @@ void loop() {
 
 
 bool measureElevatorRun() {
+
+  nicla::leds.setColor(yellow);
 
   unsigned int accel_start = millis();
   float pressure_start = barometer.value();
@@ -138,7 +152,8 @@ bool measureElevatorRun() {
   unsigned int j = 0;
   unsigned int k = 0;
   unsigned int l = 0;
-  //int accelStart = int(accelLinear.x());
+
+  // define direction of elevator run
   bool upwards;
   int accel = -1 * int(accelLinear.x());  // x axis on sensorboard is inverted/flipped
   if (accel > 0) {
@@ -146,12 +161,13 @@ bool measureElevatorRun() {
   } else {
     upwards = false;
   }
-  unsigned int accel_max = 0;
+  int accel_max = 0;
   int accel_min = 0;
   unsigned int accel_endTime = 0;
   unsigned int brake_startTime = 0;
 
   while (true) {
+
     if (millis() - updateTime >= updateIntervall) {
 
       BHY2.update();
@@ -166,46 +182,58 @@ bool measureElevatorRun() {
       //i++;
 
 
-      // if elevator has not begun braking..
+      // if elevator has not begun braking...
       if (j < numberAccelerationValuesOverLimit) {
 
-        // check end of acceleration period
-        if (l == numberAccelerationValuesOverLimit) {
-          // einmaliges Setzen der Variable, danach ist l immer größer
-          accel_endTime = millis();
-          l = l + 1;
-        } else if ((accel_endTime == 0) && (abs(accel) < accelerationLimitLow)) {
-          l++;
-        } else {
-          l = 0;
+        if (accel_endTime == 0) {
+          // check end of acceleration period
+          if (l == numberAccelerationValuesOverLimit) {
+            // einmaliges Setzen der Variable, danach ist l immer größer
+            accel_endTime = millis();
+            nicla::leds.setColor(blue);
+            l = l + 1;
+          } else if (abs(accel) < accelerationLimitLow) {
+            l++;
+          } else if (l < 2) {
+            l = 0;
+          } else {
+            l--;
+          }
         }
 
         // check end of elevator run by detecting braking
         if (upwards) {
           if (accel < (accelerationLimit * -1)) {
             j++;
-          } else {
+          } else if (j < 2) {
             j = 0;
+          } else {
+            j--;
           }
         } else {
           if (accel > accelerationLimit) {
             j++;
-          } else {
+          } else if (j < 2) {
             j = 0;
+          } else {
+            j--;
           }
         }
 
       } else {
+        nicla::leds.setColor(green);
 
         if (brake_startTime == 0) {
           brake_startTime = millis();
         }
         // check end of elevator braking by checking if acceleration->0
-        if (k < numberAccelerationValuesOverLimit) {
+        if (k < numberAccelerationValuesOverLimit_endOfRun) {
           if (abs(accel) < accelerationLimitLow) {
             k++;
-          } else {
+          } else if (k < 2) {
             k = 0;
+          } else {
+            k--;
           }
         } else {
           // leave while loop
@@ -218,26 +246,27 @@ bool measureElevatorRun() {
   float pressure_end = barometer.value();
   unsigned int brake_endTime = millis();
 
+  nicla::leds.setColor(red);
   if (calculateRun(
-        /*startTime*/ accel_start, /*endTime*/ brake_endTime,
-        /*pressureStart*/ pressure_start, /*pressureEnd*/ pressure_end,
-        /*accelMax*/ accel_max, /*accelMin*/ accel_min,
-        /*TimeOfAccelEnd*/ accel_endTime, /*TimeOfBrakeStart*/ brake_startTime)) {
+        /*accel_start*/ accel_start, /*brake_endTime*/ brake_endTime,
+        /*pressure_start*/ pressure_start, /*pressure_end*/ pressure_end,
+        /*accel_max*/ accel_max, /*accel_min*/ accel_min,
+        /*accel_endTime*/ accel_endTime, /*brake_startTime*/ brake_startTime)) {
     return true;
   } else {
     return false;
   }
 }
 
-bool calculateRun(unsigned int accel_start, unsigned int brake_endTime, float pressure_start, float pressure_end, unsigned int accel_max, int accel_min, unsigned int accel_endTime, unsigned int brake_startTime) {
+bool calculateRun(int accel_start, unsigned int brake_endTime, float pressure_start, float pressure_end, int accel_max, int accel_min, unsigned int accel_endTime, unsigned int brake_startTime) {
 
   int level = 10;
 
   if (pressure_start > 0) {
-    storeData(/*startTime*/ accel_start, /*endTime*/ brake_endTime,
+    storeData(/*accel_start*/ accel_start, /*brake_endTime*/ brake_endTime,
               /*pressureStart*/ pressure_start, /*pressureEnd*/ pressure_end,
-              /*accelMax*/ accel_max, /*accelMin*/ accel_min,
-              /*TimeOfAccelEnd*/ accel_endTime, /*TimeOfBrakeStart*/ brake_startTime,
+              /*accel_max*/ accel_max, /*accel_min*/ accel_min,
+              /*accel_endTime*/ accel_endTime, /*brake_startTime*/ brake_startTime,
               /*level*/ level);
     return true;
   } else {
@@ -258,7 +287,7 @@ bool initiateBLE() {
   Serial.print(" BLE running...");
 
   // set BLE device information & advertised data
-  BLE.setLocalName("Nicla von Flo");
+  BLE.setLocalName("Nicla für Studienarbeit");
   BLE.setAdvertisedService(serviceFileTransmission);                          // add service UUID to advertising
   serviceFileTransmission.addCharacteristic(characteristicFileTransmission);  // add characteristic to service
   BLE.addService(serviceFileTransmission);                                    // add  service to device
@@ -457,6 +486,7 @@ bool fileTransfer() {
         if (transferSuccess) break;
       }
       if (transferSuccess) continue;
+      nicla::leds.setColor(blue);
       return false;
     }
   }
@@ -467,9 +497,9 @@ bool fileTransfer() {
 
 
 
-void storeData(unsigned int accel_start, unsigned int brake_endTime, unsigned int pressure_start, unsigned int pressure_end, unsigned int accel_max, int accel_min, unsigned int accel_endTime, unsigned int brake_startTime, int level) {
+void storeData(int accel_start, unsigned int brake_endTime, float pressure_start, float pressure_end, int accel_max, int accel_min, unsigned int accel_endTime, unsigned int brake_startTime, int level) {
   // name of file on LittleFS filesystem to append data - filename tbd
-  constexpr auto filename{ "sensors.csv" };
+  constexpr auto filename{ "elevatorRun.csv" };
 
   // Open in file in write mode.
   // Create if doesn't exists, otherwise open in append mode.
@@ -513,7 +543,7 @@ void storeData(unsigned int accel_start, unsigned int brake_endTime, unsigned in
   file.close();
 }
 
-String dataToCsvLine(unsigned int accel_start, unsigned int brake_endTime, unsigned int pressure_start, unsigned int pressure_end, unsigned int accel_max, int accel_min, unsigned int accel_endTime, unsigned int brake_startTime, int level) {
+String dataToCsvLine(int accel_start, unsigned int brake_endTime, float pressure_start, float pressure_end, int accel_max, int accel_min, unsigned int accel_endTime, unsigned int brake_startTime, int level) {
   String line = "";
 
   // Pre-allocate maxLine bytes for line -> amount tbd
@@ -541,7 +571,6 @@ String dataToCsvLine(unsigned int accel_start, unsigned int brake_endTime, unsig
   line += brake_startTime;
   line += ";";
   line += level;
-  line += ";";
   //   for (int i = 0; i < sizeof(accelerationValues); i++) {
   //     line += accelerationValues[i];
   //     line += "-";
@@ -554,6 +583,72 @@ String dataToCsvLine(unsigned int accel_start, unsigned int brake_endTime, unsig
   //   line += bsec.comp_h();
   //   line += ";";
   //   line += bsec.comp_t();
+  line += "\r\n";
+
+  Serial.print("line of sensor values for next elevator run: ");
+  Serial.println(line);
+
+  return line;
+}
+
+
+
+
+void test_storeData() {
+  // name of file on LittleFS filesystem to append data - filename tbd
+  constexpr auto filename{ "continuous_data.csv" };
+
+  // Open in file in write mode.
+  // Create if doesn't exists, otherwise open in append mode.
+  mbed::File file;
+
+  auto append_error = file.open(&fs, filename, O_WRONLY | O_APPEND);
+
+  if (append_error) {
+    Serial.println("File does not exist yet");
+
+    auto create_error = file.open(&fs, filename, O_WRONLY | O_CREAT | O_APPEND);
+    if (create_error) {
+      Serial.println("File cannot be created.");
+      return;
+
+    } else {
+      auto title_error = file.write(test_headLine.c_str(), test_headLine.length());
+
+      if (title_error != headLine.length()) {
+        Serial.print("Error writing csv head line: ");
+        Serial.println(title_error);
+      }
+    }
+  }
+
+
+  // Save sensors data as a CSV line
+  auto csvLine = test_dataToCsvLine();
+
+  auto ret = file.write(csvLine.c_str(), csvLine.length());
+  if (ret != csvLine.length()) {
+    Serial.print("Error writing data: ");
+    Serial.println(ret);
+  }
+  // close file after writing data as one line
+  file.close();
+}
+
+String test_dataToCsvLine() {
+  String line = "";
+
+  // Pre-allocate maxLine bytes for line -> amount tbd
+  constexpr size_t maxLine{ bytesPerLineForStorage };
+  line.reserve(maxLine);
+
+
+  // create line with relevant sensor data
+  line += millis();
+  line += ";";
+  line += (int(accelLinear.x()) * (-1));
+  line += ";";
+  line += barometer.value();
   line += "\r\n";
 
   Serial.print("next line of sensor values: ");
