@@ -106,34 +106,41 @@ void loop() {
 
   nicla::leds.setColor(red);
 
-  // Store data from sensors to the SPI Flash Memory after specified Intervall
-  if (millis() - updateTime >= updateIntervall) {
-    updateTime = millis();
-    // read actual sensor data
-    BHY2.update();
+  // stop data storage before flashstorage is full (~2h)
+  if (millis() < 7200000) {
 
-    // Alternative Erkennung
-    // if (i < numberAccelerationValuesOverLimit) {
-    //   if (abs(int(accelLinear.x())) > accelerationLimit) {
-    //     i++;
-    //   } else if ((updateTime - detection_startTime) > detectionDuration) {
-    //     i = 0;
-    //   }
-    ////////////////////////
-    if (i < numberAccelerationValuesOverLimit) {
-      if (abs(int(accelLinear.x())) > accelerationLimit) {
-        i++;
-      } else if (i < 2) {
-        i = 0;
+    // Store data from sensors to the SPI Flash Memory after specified Intervall
+    if (millis() - updateTime >= updateIntervall) {
+      updateTime = millis();
+      // read actual sensor data
+      BHY2.update();
+
+      // Alternative Erkennung
+      // if (i < numberAccelerationValuesOverLimit) {
+      //   if (abs(int(accelLinear.x())) > accelerationLimit) {
+      //     i++;
+      //   } else if ((updateTime - detection_startTime) > detectionDuration) {
+      //     i = 0;
+      //   }
+      ////////////////////////
+      if (i < numberAccelerationValuesOverLimit) {
+        if (abs(int(accelLinear.x())) > accelerationLimit) {
+          i++;
+        } else if (i < 2) {
+          i = 0;
+        } else {
+          i--;
+        }
       } else {
-        i--;
+        measureElevatorRun();
+        i = 0;
       }
-    } else {
-      measureElevatorRun();
-      i = 0;
-    }
 
-    test_storeData();
+      test_storeData();
+    }
+  }
+  else {
+    nicla::leds.setColor(yellow);
   }
 }
 
@@ -171,6 +178,7 @@ bool measureElevatorRun() {
     if (millis() - updateTime >= updateIntervall) {
 
       BHY2.update();
+      test_storeData();
       accel = -1 * int(accelLinear.x());  // x axis on sensorboard is inverted/flipped
       if (accel > accel_max) {
         accel_max = accel;
@@ -499,7 +507,7 @@ bool fileTransfer() {
 
 void storeData(int accel_start, unsigned int brake_endTime, float pressure_start, float pressure_end, int accel_max, int accel_min, unsigned int accel_endTime, unsigned int brake_startTime, int level) {
   // name of file on LittleFS filesystem to append data - filename tbd
-  constexpr auto filename{ "elevatorRun.csv" };
+  constexpr auto filename{ "elevatorRuns.csv" };
 
   // Open in file in write mode.
   // Create if doesn't exists, otherwise open in append mode.
