@@ -33,11 +33,10 @@ Sensor barometer(SENSOR_ID_BARO);
 
 // acceleration limit for decision between movement and stop of elevator
 const int updateIntervall = 100;  //ms
-const int numberAccelerationValuesOverLimit = 4;
-const int numberAccelerationValuesOverLimit_endOfRun = 8;
+const int numberAccelerationValuesOverLimit = 3;
 const int longestDriveDuration = 30000;       //ms
 const unsigned int detectionDuration = 1000;  //ms
-const int accelerationLimit = 75;
+const int accelerationLimit = 100;
 const int accelerationLimitLow = 60;
 unsigned int i = 0;
 
@@ -235,7 +234,7 @@ bool measureElevatorRun() {
           brake_startTime = millis();
         }
         // check end of elevator braking by checking if acceleration->0
-        if (k < numberAccelerationValuesOverLimit_endOfRun) {
+        if (k < numberAccelerationValuesOverLimit) {
           if (abs(accel) < accelerationLimitLow) {
             k++;
           } else if (k < 2) {
