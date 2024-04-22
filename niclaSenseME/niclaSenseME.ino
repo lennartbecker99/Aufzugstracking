@@ -29,7 +29,7 @@ mbed::LittleFileSystem fs{ userRoot };
 // sensor objects to be used for retreiving sensor data
 SensorXYZ accelLinear(SENSOR_ID_LACC);  // negative x is our upwards
 Sensor barometer(SENSOR_ID_BARO);
-//SensorBSEC bsec(SENSOR_ID_BSEC);
+SensorBSEC bsec(SENSOR_ID_BSEC);
 
 // acceleration limit for decision between movement and stop of elevator
 const int updateIntervall = 100;  //ms
@@ -42,7 +42,7 @@ unsigned int i = 0;
 
 
 // csv head line
-const String headLine = "timestamp;starttime;endtime;pressureStart;pressureEnd;accelMax;accelMin;accelEnd;brakeStart;level\r\n";
+const String headLine = "timestamp;starttime;endtime;pressureStart;pressureEnd;accelMax;accelMin;accelEnd;brakeStart;level;co2_eq;b_voc_eq;accuracy;\r\n";
 const String test_headLine = "timestamp;accelerationX*(-1);pressure\r\n";
 
 
@@ -137,8 +137,7 @@ void loop() {
 
       test_storeData();
     }
-  }
-  else {
+  } else {
     nicla::leds.setColor(yellow);
   }
 }
@@ -335,7 +334,7 @@ bool initiateSensors() {
   BHY2.begin();
   accelLinear.begin();
   barometer.begin();
-  //bsec.begin();
+  bsec.begin();
 
   Serial.println(" initialised sensors.");
 
@@ -583,10 +582,12 @@ String dataToCsvLine(int accel_start, unsigned int brake_endTime, float pressure
   //     line += "-";
   //     accelerationValues[i] = 0;
   //   }
-  //   line += bsec.co2_eq();
-  //   line += ";";
-  //   line += bsec.b_voc_eq();
-  //   line += ";";
+  line += bsec.co2_eq();
+  line += ";";
+  line += bsec.b_voc_eq();
+  line += ";";
+  line += bsec.accuracy();
+  line += ";";
   //   line += bsec.comp_h();
   //   line += ";";
   //   line += bsec.comp_t();
