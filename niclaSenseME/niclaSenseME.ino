@@ -52,6 +52,9 @@ long transferMaxDurationMillis = 30000;
 long lastConnectionMillis;
 String dateAndTime = "";
 
+
+const float mPerLevel = 3.0;
+
 // helper variables for storing/retreiving file contents
 const int bytesPerLineForStorage = 128;
 const int bytesPerLine = 128;
@@ -266,18 +269,14 @@ bool measureElevatorRun() {
 
 bool calculateRun(int accel_start, unsigned int brake_endTime, float pressure_start, float pressure_end, int accel_max, int accel_min, unsigned int accel_endTime, unsigned int brake_startTime) {
 
-  int level = 10;
+  int level = int(((pressure_end - pressure_start) * 8.4) / mPerLevel);
 
-  if (pressure_start > 0) {
-    storeData(/*accel_start*/ accel_start, /*brake_endTime*/ brake_endTime,
-              /*pressureStart*/ pressure_start, /*pressureEnd*/ pressure_end,
-              /*accel_max*/ accel_max, /*accel_min*/ accel_min,
-              /*accel_endTime*/ accel_endTime, /*brake_startTime*/ brake_startTime,
-              /*level*/ level);
-    return true;
-  } else {
-    return false;
-  }
+  storeData(/*accel_start*/ accel_start, /*brake_endTime*/ brake_endTime,
+            /*pressureStart*/ pressure_start, /*pressureEnd*/ pressure_end,
+            /*accel_max*/ accel_max, /*accel_min*/ accel_min,
+            /*accel_endTime*/ accel_endTime, /*brake_startTime*/ brake_startTime,
+            /*level*/ level);
+  return true;
 }
 
 
